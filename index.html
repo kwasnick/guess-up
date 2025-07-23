@@ -24,8 +24,8 @@
         <h2>How to Play</h2>
         <p>
           Hold the phone on your forehead so the card faces your teammates.<br />
-          They give you clues. Tilt down or swipe down to mark Correct;<br />
-          tilt up or swipe up to Skip.
+          They give you clues. Swipe down to mark Correct;<br />
+          swipe up to Skip.
         </p>
       </div>
     </div>
@@ -120,9 +120,6 @@
       let score = 0,
         timerId,
         timeLeft;
-
-      let lastTiltState = null; // "down", "flat", "up"
-      let touchStartY = 0;
 
       let isDragging = false;
       let dragStartY = 0;
@@ -240,9 +237,6 @@
         updateTimer();
         toggle(gameplayView, true);
 
-        // attach tilt listener
-        window.addEventListener("deviceorientation", handleOrientation);
-
         timerId = setInterval(() => {
           timeLeft--;
           // only beep during the final 10 seconds
@@ -279,7 +273,6 @@
       }
 
       function nextCard() {
-        lastTiltState = null;
         currentIndex++;
         if (currentIndex >= currentCards.length) {
           endRound();
@@ -305,25 +298,6 @@
         toggle(appHeader, true);
         toggle(deckList, true);
         toggle(scoreModal, true);
-      }
-
-      // -- Device‑orientation handler
-      function handleOrientation(evt) {
-        const beta = evt.beta; // front-to-back tilt
-        // tilt forward (phones top edge dips down) → correct
-        if (beta > 60 && lastTiltState === "flat") {
-          markCorrect();
-          lastTiltState = "down";
-        }
-        // tilt backward (phones top edge lifts up) → skip
-        else if (beta < -60 && lastTiltState === "flat") {
-          markSkip();
-          lastTiltState = "up";
-        }
-        // reset when almost flat
-        else if (Math.abs(beta) < 10) {
-          lastTiltState = "flat";
-        }
       }
 
       // -- Event bindings
