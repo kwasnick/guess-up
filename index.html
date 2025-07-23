@@ -121,8 +121,80 @@
         timerId,
         timeLeft;
 
-      let lastTiltState = null; // "down" or "up"
+      let lastTiltState = null; // "down", "flat", "up"
       let touchStartY = 0;
+
+      let isDragging = false;
+      let dragStartY = 0;
+
+      // -- Helper functions for dragging
+
+      // Helper to reset card position instantly (no transition)
+      function resetCard() {
+        cardContainer.style.transition = "none";
+        cardContainer.style.transform = "";
+        // force a reflow so the next transition runs
+        // (only needed if you immediately add another transition)
+        void cardContainer.offsetHeight;
+        cardContainer.style.transition = "transform 0.2s ease-out";
+      }
+
+      // Drag start
+      function onDragStart(e) {
+        isDragging = true;
+        dragStartY = e.clientY;
+        // prevent other apps from stealing the gesture
+        cardContainer.setPointerCapture(e.pointerId);
+      }
+
+      // Drag move
+      function onDragMove(e) {
+        if (!isDragging) return;
+        const deltaY = e.clientY - dragStartY;
+        cardContainer.style.transform = `translateY(${deltaY}px)`;
+        // if you want a little tilt, add:
+        const rot = Math.sign(deltaY) * Math.min(15, Math.abs(deltaY) / 10);
+        cardContainer.style.transform = `translateY(${deltaY}px) rotate(${rot}deg)`;
+      }
+
+      // Drag end / cancel
+      function onDragEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        cardContainer.releasePointerCapture(e.pointerId);
+
+        const deltaY = e.clientY - dragStartY;
+        const threshold = 100;
+
+        if (deltaY > threshold) {
+          // Animate off‐screen down
+          cardContainer.style.transition = "transform 0.3s ease-in";
+          cardContainer.style.transform = "translateY(100vh)";
+          setTimeout(() => {
+            // clean up and mark correct
+            resetCard();
+            markCorrect();
+          }, 300);
+        } else if (deltaY < -threshold) {
+          // Animate off‐screen up
+          cardContainer.style.transition = "transform 0.3s ease-in";
+          cardContainer.style.transform = "translateY(-100vh)";
+          setTimeout(() => {
+            resetCard();
+            markSkip();
+          }, 300);
+        } else {
+          // Snap back
+          resetCard();
+        }
+      }
+
+      // Hook them up **once**, e.g. after you grab cardContainer:
+      cardContainer.style.touchAction = "none"; // ensure CSS is applied at runtime
+      cardContainer.addEventListener("pointerdown", onDragStart);
+      cardContainer.addEventListener("pointermove", onDragMove);
+      cardContainer.addEventListener("pointerup", onDragEnd);
+      cardContainer.addEventListener("pointercancel", onDragEnd);
 
       // -- Utility: show/hide
       function toggle(el, show = true) {
@@ -170,10 +242,6 @@
 
         // attach tilt listener
         window.addEventListener("deviceorientation", handleOrientation);
-
-        // attach swipe listeners
-        cardContainer.addEventListener("touchstart", onTouchStart);
-        cardContainer.addEventListener("touchend", onTouchEnd);
 
         timerId = setInterval(() => {
           timeLeft--;
@@ -226,8 +294,6 @@
 
         // clean up listeners
         window.removeEventListener("deviceorientation", handleOrientation);
-        cardContainer.removeEventListener("touchstart", onTouchStart);
-        cardContainer.removeEventListener("touchend", onTouchEnd);
 
         if (useSound) (roundendAudio.currentTime = 0), roundendAudio.play();
         toggle(gameplayView, false);
@@ -245,29 +311,19 @@
       function handleOrientation(evt) {
         const beta = evt.beta; // front-to-back tilt
         // tilt forward (phones top edge dips down) → correct
-        if (beta > 30 && lastTiltState !== "down") {
+        if (beta > 60 && lastTiltState === "flat") {
           markCorrect();
           lastTiltState = "down";
         }
         // tilt backward (phones top edge lifts up) → skip
-        else if (beta < -30 && lastTiltState !== "up") {
+        else if (beta < -60 && lastTiltState === "flat") {
           markSkip();
           lastTiltState = "up";
         }
         // reset when almost flat
         else if (Math.abs(beta) < 10) {
-          lastTiltState = null;
+          lastTiltState = "flat";
         }
-      }
-
-      // -- Touch‑swipe handlers
-      function onTouchStart(e) {
-        touchStartY = e.changedTouches[0].clientY;
-      }
-      function onTouchEnd(e) {
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        if (dy > 50) markCorrect(); // swipe down
-        else if (dy < -50) markSkip(); // swipe up
       }
 
       // -- Event bindings

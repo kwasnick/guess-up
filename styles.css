@@ -185,6 +185,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Stuff for dragging */
+  /* Prevent the browser from interpreting touches here as page scrolls */
+  touch-action: none;
+  /* Optional: disable text selection while dragging */
+  user-select: none;
+  /* Make sure you have a smooth transition for “snap‑back” */
+  transition: transform 0.2s ease-out;
+  will-change: transform;
 }
 .timer {
   position: fixed;        /* take it out of the flow and pin to viewport */
