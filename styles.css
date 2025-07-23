@@ -216,3 +216,33 @@ body {
 .results-list li {
   margin: 0.25rem 0;
 }
+
+
+/* COUNTDOWN */
+
+.countdown-card {
+  position: relative;
+}
+.countdown-card .arrow {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 1.9rem;
+}
+.countdown-card .arrow.up {
+  top: 1rem;
+}
+.countdown-card .arrow.down {
+  bottom: 1rem;
+}
+.countdown-card .countdown-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: white;
+  font-size: 3.5rem;
+  font-weight: bold;
+  text-align: center;
+}

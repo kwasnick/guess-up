@@ -224,6 +224,55 @@
         toggle(deckModal, true);
       }
 
+      // --- Countdown before game start ---
+      function showCountdown() {
+        return new Promise((resolve) => {
+          let count = 3;
+          // Hide UI panels and show our countdown card
+          toggle(appHeader, false);
+          toggle(deckList, false);
+          toggle(deckModal, false);
+          toggle(scoreModal, false);
+          toggle(helpModal, false);
+          toggle(settingsModal, false);
+          toggle(gameplayView, true);
+
+          // Disable dragging on the card
+          cardContainer.style.pointerEvents = "none";
+          cardContainer.classList.add("countdown-card");
+
+          // hide timer
+          toggle(timerEl, false);
+
+          // Inject countdown card markup
+          cardContainer.innerHTML = `
+      <div class="arrow up">↑ swipe up to skip</div>
+      <div class="countdown-text">Place on Forehead!</div>
+      <div class="arrow down">↓ swipe down for correct</div>
+    `;
+
+          // Play beep immediately and then every second, three times
+          beepAudio.currentTime = 0;
+          beepAudio.play();
+          count--;
+          const interval = setInterval(() => {
+            if (count > 0) {
+              beepAudio.currentTime = 0;
+              beepAudio.play();
+              count--;
+            } else {
+              clearInterval(interval);
+              // Cleanup countdown view
+              toggle(timerEl, true);
+              cardContainer.classList.remove("countdown-card");
+              toggle(gameplayView, false);
+              cardContainer.style.pointerEvents = "auto";
+              resolve();
+            }
+          }, 1000);
+        });
+      }
+
       // -- Start a round
       function startRound() {
         toggle(appHeader, false);
@@ -285,9 +334,6 @@
       function endRound() {
         clearInterval(timerId);
 
-        // clean up listeners
-        window.removeEventListener("deviceorientation", handleOrientation);
-
         if (useSound) (roundendAudio.currentTime = 0), roundendAudio.play();
         toggle(gameplayView, false);
         scoreTitle.textContent = `${selectedDeck.title} – Score: ${score}`;
@@ -314,10 +360,12 @@
         "change",
         (e) => (useSound = e.target.checked)
       );
-      playBtn.addEventListener("click", startRound);
+      playBtn.addEventListener("click", () => {
+        showCountdown().then(startRound);
+      });
       replayBtn.addEventListener("click", () => {
         toggle(scoreModal, false);
-        startRound();
+        showCountdown().then(startRound);
       });
 
       // initial render
