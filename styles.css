@@ -1,0 +1,210 @@
+.hidden {
+  display: none !important;
+}
+
+:root {
+  --blue-900: #0f1f3d;
+  --blue-800: #16324f;
+  --blue-700: #1f456e;
+  --white:   #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: sans-serif;
+  background: var(--blue-900);
+  color: var(--white);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--blue-800);
+  border-bottom: 2px solid var(--white);
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--white);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+/* DECK GRID */
+.deck-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 140px);
+  grid-auto-rows: 210px;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow-y: auto;    /* vertical scroll when too many rows */
+  /* overflow-x: auto;  /* optional: horizontal scroll if you want */ */
+}
+
+/* DECK CARD (movie‑poster shape) */
+.deck-card {
+  width: 140px;
+  height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(rgba(255,255,255,0.1) 10%, transparent 10%),
+    var(--blue-700);
+  background-size: 10px 10px;
+  border: 3px solid var(--white);
+  border-radius: 1rem;
+  color: var(--white);
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.deck-card:hover {
+  transform: scale(1.02);
+}
+
+/* MODALS */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal.hidden {
+  display: none;
+}
+.modal-content {
+  background: var(--blue-700);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 320px;
+  text-align: center;
+}
+.modal-content h2 {
+  margin-bottom: 1rem;
+}
+.setting-group {
+  margin: 0.75rem 0;
+  text-align: left;
+}
+.btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+.duration-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border: 2px solid var(--white);
+  border-radius: 0.5rem;
+  background: var(--blue-800);
+  color: var(--white);
+  cursor: pointer;
+}
+.duration-btn.active {
+  background: var(--white);
+  color: var(--blue-800);
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+
+.primary-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.2);
+}
+.secondary-btn {
+  background: transparent;
+  border: 2px solid var(--white);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* GAMEPLAY VIEW */
+#gameplay-view {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#gameplay-view.hidden {
+  display: none;
+}
+.card-container {
+  background:
+    radial-gradient(rgba(255,255,255,0.1) 10%, transparent 10%),
+    var(--blue-700);
+  background-size: 20px 20px;
+  border: 4px solid var(--white);
+  border-radius: 1rem;
+  padding: 2rem;
+  font-size: 5.75rem;
+  text-align: center;
+  width: 90%;
+  height: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.timer {
+  position: fixed;        /* take it out of the flow and pin to viewport */
+  bottom: 50px;           /* 50px up from the bottom edge */
+  left: 50%;              /* center it horizontally */
+  transform: translateX(-50%); /* true centering */
+  z-index: 1000;          /* float above everything else */
+  font-size: 3rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* SCORE RESULTS */
+.results-list {
+  list-style: none;
+  margin-top: 1rem;
+  text-align: left;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-top: 1rem;
+}
+.results-list li {
+  margin: 0.25rem 0;
+}

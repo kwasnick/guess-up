@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Guess Up!</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  </head>
+  <body>
+    <!-- HEADER -->
+    <header class="app-header">
+      <button id="help-btn" class="icon-btn">?</button>
+      <h1>Guess Up!</h1>
+      <button id="settings-btn" class="icon-btn">⚙️</button>
+    </header>
+
+    <!-- DECK SELECTION GRID -->
+    <main id="deck-list" class="deck-grid"></main>
+
+    <!-- HELP MODAL -->
+    <div id="help-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>How to Play</h2>
+        <p>
+          Hold the phone on your forehead so the card faces your teammates.<br />
+          They give you clues. Tilt down or swipe down to mark Correct;<br />
+          tilt up or swipe up to Skip.
+        </p>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Settings</h2>
+        <div class="setting-group">
+          <label>Round Duration:</label>
+          <div class="btn-group">
+            <button class="duration-btn" data-seconds="60">60s</button>
+            <button class="duration-btn" data-seconds="90">90s</button>
+            <button class="duration-btn" data-seconds="120">120s</button>
+          </div>
+        </div>
+        <div class="setting-group">
+          <label
+            ><input type="checkbox" id="sound-checkbox" checked /> Sound
+            Effects</label
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- DECK INFO + PLAY MODAL -->
+    <div id="deck-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="deck-title"></h2>
+        <p id="deck-description"></p>
+        <br />
+        <button id="play-btn" class="primary-btn">Play!</button>
+      </div>
+    </div>
+
+    <!-- GAMEPLAY VIEW -->
+    <div id="gameplay-view" class="hidden">
+      <div id="card-container" class="card-container"></div>
+      <div id="timer" class="timer">0:00</div>
+    </div>
+
+    <!-- SCORE SCREEN -->
+    <div id="score-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="score-title">Score: 0</h2>
+        <button id="replay-btn" class="primary-btn">Play Again</button>
+        <ul id="results-list" class="results-list"></ul>
+      </div>
+    </div>
+
+    <!-- AUDIO ELEMENTS -->
+    <audio id="beep-audio" src="audio/beep.mp3"></audio>
+    <audio id="correct-audio" src="audio/correct.mp3"></audio>
+    <audio id="skip-audio" src="audio/skip.mp3"></audio>
+    <audio id="roundend-audio" src="audio/round_end.mp3"></audio>
+
+    <!-- LOGIC -->
+    <script type="module">
+      import { decks } from "./decks.js";
+
+      // -- Element refs
+      const appHeader = document.querySelector(".app-header");
+      const deckList = document.getElementById("deck-list");
+      const helpBtn = document.getElementById("help-btn");
+      const settingsBtn = document.getElementById("settings-btn");
+      const helpModal = document.getElementById("help-modal");
+      const settingsModal = document.getElementById("settings-modal");
+      const deckModal = document.getElementById("deck-modal");
+      const playBtn = document.getElementById("play-btn");
+      const deckTitleEl = document.getElementById("deck-title");
+      const deckDescEl = document.getElementById("deck-description");
+      const settingsCheckbox = document.getElementById("sound-checkbox");
+      const durationButtons = document.querySelectorAll(".duration-btn");
+      const gameplayView = document.getElementById("gameplay-view");
+      const cardContainer = document.getElementById("card-container");
+      const timerEl = document.getElementById("timer");
+      const scoreModal = document.getElementById("score-modal");
+      const scoreTitle = document.getElementById("score-title");
+      const resultsList = document.getElementById("results-list");
+      const replayBtn = document.getElementById("replay-btn");
+
+      const beepAudio = document.getElementById("beep-audio");
+      const correctAudio = document.getElementById("correct-audio");
+      const skipAudio = document.getElementById("skip-audio");
+      const roundendAudio = document.getElementById("roundend-audio");
+
+      let selectedDeck = null;
+      let roundDuration = 60;
+      let useSound = true;
+      let currentCards = [];
+      let currentIndex = 0;
+      let score = 0,
+        timerId,
+        timeLeft;
+
+      let lastTiltState = null; // "down" or "up"
+      let touchStartY = 0;
+
+      // -- Utility: show/hide
+      function toggle(el, show = true) {
+        el.classList.toggle("hidden", !show);
+      }
+
+      // -- Close modals on background click
+      document.querySelectorAll(".modal").forEach((m) => {
+        m.addEventListener("click", (e) => {
+          if (e.target === m) toggle(m, false);
+        });
+      });
+
+      // -- Deck grid
+      function renderDecks() {
+        decks.forEach((d, i) => {
+          const btn = document.createElement("button");
+          btn.className = "deck-card";
+          btn.innerHTML = `<h3>${d.title}</h3>`;
+          btn.addEventListener("click", () => openDeck(i));
+          deckList.appendChild(btn);
+        });
+      }
+
+      // -- Open deck info
+      function openDeck(i) {
+        selectedDeck = decks[i];
+        deckTitleEl.textContent = selectedDeck.title;
+        deckDescEl.textContent = selectedDeck.description;
+        toggle(deckModal, true);
+      }
+
+      // -- Start a round
+      function startRound() {
+        toggle(appHeader, false);
+        toggle(deckList, false);
+        toggle(deckModal, false);
+        score = 0;
+        currentCards = [...selectedDeck.cards].sort(() => Math.random() - 0.5);
+        currentIndex = 0;
+        timeLeft = roundDuration;
+        updateCard();
+        updateTimer();
+        toggle(gameplayView, true);
+
+        // attach tilt listener
+        window.addEventListener("deviceorientation", handleOrientation);
+
+        // attach swipe listeners
+        cardContainer.addEventListener("touchstart", onTouchStart);
+        cardContainer.addEventListener("touchend", onTouchEnd);
+
+        timerId = setInterval(() => {
+          timeLeft--;
+          // only beep during the final 10 seconds
+          if (useSound && timeLeft > 0 && timeLeft <= 10) {
+            beepAudio.currentTime = 0;
+            beepAudio.play();
+          }
+          updateTimer();
+          if (timeLeft <= 0) endRound();
+        }, 1000);
+      }
+
+      // -- Update the shown card
+      function updateCard() {
+        cardContainer.textContent = currentCards[currentIndex];
+      }
+
+      // -- Update the timer display
+      function updateTimer() {
+        const m = String(Math.floor(timeLeft / 60)).padStart(1, "0");
+        const s = String(timeLeft % 60).padStart(2, "0");
+        timerEl.textContent = `${m}:${s}`;
+      }
+
+      // -- Mark correct / skip
+      function markCorrect() {
+        if (useSound) (correctAudio.currentTime = 0), correctAudio.play();
+        score++;
+        nextCard();
+      }
+      function markSkip() {
+        if (useSound) (skipAudio.currentTime = 0), skipAudio.play();
+        nextCard();
+      }
+
+      function nextCard() {
+        lastTiltState = null;
+        currentIndex++;
+        if (currentIndex >= currentCards.length) {
+          endRound();
+        } else {
+          updateCard();
+        }
+      }
+
+      // -- End the round
+      function endRound() {
+        clearInterval(timerId);
+
+        // clean up listeners
+        window.removeEventListener("deviceorientation", handleOrientation);
+        cardContainer.removeEventListener("touchstart", onTouchStart);
+        cardContainer.removeEventListener("touchend", onTouchEnd);
+
+        if (useSound) (roundendAudio.currentTime = 0), roundendAudio.play();
+        toggle(gameplayView, false);
+        scoreTitle.textContent = `${selectedDeck.title} – Score: ${score}`;
+        const seenCards = currentCards.slice(0, currentIndex);
+        resultsList.innerHTML = seenCards
+          .map((c, i) => `<li>${c} ${i < score ? "✅" : "❌"}</li>`)
+          .join("");
+        toggle(appHeader, true);
+        toggle(deckList, true);
+        toggle(scoreModal, true);
+      }
+
+      // -- Device‑orientation handler
+      function handleOrientation(evt) {
+        const beta = evt.beta; // front-to-back tilt
+        // tilt forward (phones top edge dips down) → correct
+        if (beta > 30 && lastTiltState !== "down") {
+          markCorrect();
+          lastTiltState = "down";
+        }
+        // tilt backward (phones top edge lifts up) → skip
+        else if (beta < -30 && lastTiltState !== "up") {
+          markSkip();
+          lastTiltState = "up";
+        }
+        // reset when almost flat
+        else if (Math.abs(beta) < 10) {
+          lastTiltState = null;
+        }
+      }
+
+      // -- Touch‑swipe handlers
+      function onTouchStart(e) {
+        touchStartY = e.changedTouches[0].clientY;
+      }
+      function onTouchEnd(e) {
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (dy > 50) markCorrect(); // swipe down
+        else if (dy < -50) markSkip(); // swipe up
+      }
+
+      // -- Event bindings
+      helpBtn.addEventListener("click", () => toggle(helpModal, true));
+      settingsBtn.addEventListener("click", () => toggle(settingsModal, true));
+      durationButtons.forEach((b) =>
+        b.addEventListener("click", (e) => {
+          roundDuration = +e.target.dataset.seconds;
+          durationButtons.forEach((x) => x.classList.remove("active"));
+          e.target.classList.add("active");
+        })
+      );
+      settingsCheckbox.addEventListener(
+        "change",
+        (e) => (useSound = e.target.checked)
+      );
+      playBtn.addEventListener("click", startRound);
+      replayBtn.addEventListener("click", () => {
+        toggle(scoreModal, false);
+        startRound();
+      });
+
+      // initial render
+      renderDecks();
+    </script>
+  </body>
+</html>
