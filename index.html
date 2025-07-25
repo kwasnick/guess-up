@@ -131,8 +131,12 @@
 
       const tiltDetector = new TiltDetector({ threshold: 30, frequency: 30 });
 
-      let roundDuration = 60;
-      let ctrlScheme = "tilt";
+      // --- Saved settings
+      const savedDuration = localStorage.getItem("roundDuration");
+      const savedScheme = localStorage.getItem("ctrlScheme");
+      let roundDuration = savedDuration ? parseInt(savedDuration, 10) : 60;
+      let ctrlScheme = savedScheme ? savedScheme : "tilt";
+
       // Initialize active states of settings buttons
       durationButtons.forEach((btn) => {
         if (btn.dataset.seconds === `${roundDuration}`) {
@@ -454,6 +458,7 @@
       durationButtons.forEach((b) =>
         b.addEventListener("click", (e) => {
           roundDuration = +e.target.dataset.seconds;
+          localStorage.setItem("roundDuration", roundDuration);
           durationButtons.forEach((x) => x.classList.remove("active"));
           e.target.classList.add("active");
         })
@@ -461,6 +466,7 @@
       ctrlSchemeButtons.forEach((b) =>
         b.addEventListener("click", (e) => {
           ctrlScheme = e.target.dataset.scheme;
+          localStorage.setItem("ctrlScheme", ctrlScheme);
           ctrlSchemeButtons.forEach((x) => x.classList.remove("active"));
           e.target.classList.add("active");
 
