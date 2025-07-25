@@ -87,6 +87,7 @@
     <audio id="correct-audio" src="audio/correct.mp3"></audio>
     <audio id="skip-audio" src="audio/skip.mp3"></audio>
     <audio id="roundend-audio" src="audio/round_end.mp3"></audio>
+    <audio id="game-start-audio" src="audio/game_start.mp3"></audio>
 
     <!-- LOGIC -->
     <script type="module">
@@ -119,6 +120,7 @@
       const correctAudio = document.getElementById("correct-audio");
       const skipAudio = document.getElementById("skip-audio");
       const roundendAudio = document.getElementById("roundend-audio");
+      const gameStartAudio = document.getElementById("game-start-audio");
 
       const tiltDetector = new TiltDetector({ threshold: 30, frequency: 30 });
 
@@ -258,6 +260,31 @@
         toggle(deckModal, true);
       }
 
+      function showForeheadInstructions() {
+        // Hide UI panels and show our countdown card
+        toggle(appHeader, false);
+        toggle(deckList, false);
+        toggle(deckModal, false);
+        toggle(scoreModal, false);
+        toggle(helpModal, false);
+        toggle(settingsModal, false);
+        toggle(gameplayView, true);
+
+        // Disable dragging on the card
+        cardContainer.style.pointerEvents = "none";
+        cardContainer.classList.add("countdown-card");
+
+        // hide timer
+        toggle(timerEl, false);
+
+        // Inject countdown card markup
+        cardContainer.innerHTML = `
+        <div class="arrow up">↑ swipe up to skip</div>
+        <div class="countdown-text">Place on Forehead!</div>
+        <div class="arrow down">↓ swipe down for correct</div>
+      `;
+      }
+
       // --- Countdown before game start ---
       function showCountdown() {
         return new Promise((resolve) => {
@@ -309,6 +336,11 @@
 
       // -- Start a round
       function startRound() {
+        // play game‐start sound
+        if (useSound) {
+          gameStartAudio.currentTime = 0;
+          gameStartAudio.play();
+        }
         toggle(appHeader, false);
         toggle(deckList, false);
         toggle(deckModal, false);
@@ -401,8 +433,19 @@
 
       function startRoundWithCountdown() {
         toggle(scoreModal, false);
-        tiltDetector.start().then(() => {
+        if (ctrlScheme === "touch") {
           showCountdown().then(startRound);
+          return;
+        }
+        showForeheadInstructions();
+        tiltDetector.start().then(() => {
+          // wait for the first “tiltdown” (i.e. forehead placement)
+          const onPlaced = () => {
+            tiltDetector.removeEventListener("neutral", onPlaced);
+            // then kick off the 3‑2‑1 countdown + round
+            showCountdown().then(startRound);
+          };
+          tiltDetector.addEventListener("neutral", onPlaced);
         });
       }
 
