@@ -32,6 +32,7 @@ body {
   padding: 0.75rem 1rem;
   background: var(--blue-800);
   border-bottom: 2px solid var(--white);
+  flex: 0 0 auto;
 }
 
 .app-header h1 {
@@ -114,7 +115,7 @@ body {
   display: flex;
   gap: 0.5rem;
 }
-.duration-btn {
+.btn-group button {
   flex: 1;
   padding: 0.5rem;
   border: 2px solid var(--white);
@@ -123,7 +124,7 @@ body {
   color: var(--white);
   cursor: pointer;
 }
-.duration-btn.active {
+.btn-group button.active {
   background: var(--white);
   color: var(--blue-800);
 }
@@ -160,12 +161,11 @@ body {
 
 /* GAMEPLAY VIEW */
 #gameplay-view {
-  position: relative;
-  flex: 1;
+  height: 100svh;     /* or 100dvh if you _do_ want it to adapt dynamically */
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 #gameplay-view.hidden {
   display: none;
@@ -180,8 +180,13 @@ body {
   padding: 2rem;
   font-size: 5.75rem;
   text-align: center;
-  width: 90%;
-  height: 90%;
+
+  flex: 1 1 auto;                   /* grow & shrink as needed */
+  max-width: 90vw;                  /* no wider than 90% of the viewport */
+  max-height: 90svh;
+  box-sizing: border-box;
+  overflow: hidden;                 /* hide any content that does overflow */
+
   display: flex;
   align-items: center;
   justify-content: center;

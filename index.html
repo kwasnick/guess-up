@@ -44,9 +44,15 @@
         </div>
         <div class="setting-group">
           <label
-            ><input type="checkbox" id="sound-checkbox" checked /> Sound
-            Effects</label
-          >
+            ><input type="checkbox" id="sound-checkbox" checked /> Sound Effects
+          </label>
+        </div>
+        <div class="setting-group">
+          <label>Control Scheme:</label>
+          <div class="btn-group">
+            <button class="ctrl-scheme-btn" data-scheme="tilt">Tilt</button>
+            <button class="ctrl-scheme-btn" data-scheme="touch">Touch</button>
+          </div>
         </div>
       </div>
     </div>
@@ -85,6 +91,7 @@
     <!-- LOGIC -->
     <script type="module">
       import { decks } from "./decks.js";
+      import { TiltDetector } from "./tilt-detector.js";
 
       // -- Element refs
       const appHeader = document.querySelector(".app-header");
@@ -99,6 +106,7 @@
       const deckDescEl = document.getElementById("deck-description");
       const settingsCheckbox = document.getElementById("sound-checkbox");
       const durationButtons = document.querySelectorAll(".duration-btn");
+      const ctrlSchemeButtons = document.querySelectorAll(".ctrl-scheme-btn");
       const gameplayView = document.getElementById("gameplay-view");
       const cardContainer = document.getElementById("card-container");
       const timerEl = document.getElementById("timer");
@@ -112,8 +120,23 @@
       const skipAudio = document.getElementById("skip-audio");
       const roundendAudio = document.getElementById("roundend-audio");
 
-      let selectedDeck = null;
+      const tiltDetector = new TiltDetector({ threshold: 30, frequency: 30 });
+
       let roundDuration = 60;
+      let ctrlScheme = "tilt";
+      // Initialize active states of settings buttons
+      durationButtons.forEach((btn) => {
+        if (btn.dataset.seconds === `${roundDuration}`) {
+          btn.classList.add("active");
+        }
+      });
+      ctrlSchemeButtons.forEach((btn) => {
+        if (btn.dataset.scheme === ctrlScheme) {
+          btn.classList.add("active");
+        }
+      });
+
+      let selectedDeck = null;
       let useSound = true;
       let currentCards = [];
       let currentIndex = 0;
@@ -138,6 +161,7 @@
 
       // Drag start
       function onDragStart(e) {
+        if (ctrlScheme !== "touch") return;
         isDragging = true;
         dragStartY = e.clientY;
         // prevent other apps from stealing the gesture
@@ -146,6 +170,7 @@
 
       // Drag move
       function onDragMove(e) {
+        if (ctrlScheme !== "touch") return;
         if (!isDragging) return;
         const deltaY = e.clientY - dragStartY;
         cardContainer.style.transform = `translateY(${deltaY}px)`;
@@ -156,6 +181,7 @@
 
       // Drag end / cancel
       function onDragEnd(e) {
+        if (ctrlScheme !== "touch") return;
         if (!isDragging) return;
         isDragging = false;
         cardContainer.releasePointerCapture(e.pointerId);
@@ -164,26 +190,34 @@
         const threshold = 100;
 
         if (deltaY > threshold) {
-          // Animate off‐screen down
-          cardContainer.style.transition = "transform 0.3s ease-in";
-          cardContainer.style.transform = "translateY(100vh)";
-          setTimeout(() => {
-            // clean up and mark correct
-            resetCard();
-            markCorrect();
-          }, 300);
+          cardMarkedCorrect();
         } else if (deltaY < -threshold) {
-          // Animate off‐screen up
-          cardContainer.style.transition = "transform 0.3s ease-in";
-          cardContainer.style.transform = "translateY(-100vh)";
-          setTimeout(() => {
-            resetCard();
-            markSkip();
-          }, 300);
+          cardMarkedSkipped();
         } else {
           // Snap back
           resetCard();
         }
+      }
+
+      function cardMarkedCorrect() {
+        // Animate off‐screen down
+        cardContainer.style.transition = "transform 0.3s ease-in";
+        cardContainer.style.transform = "translateY(100vh)";
+        setTimeout(() => {
+          // clean up and mark correct
+          resetCard();
+          markCorrect();
+        }, 300);
+      }
+
+      function cardMarkedSkipped() {
+        // Animate off‐screen up
+        cardContainer.style.transition = "transform 0.3s ease-in";
+        cardContainer.style.transform = "translateY(-100vh)";
+        setTimeout(() => {
+          resetCard();
+          markSkip();
+        }, 300);
       }
 
       // Hook them up **once**, e.g. after you grab cardContainer:
@@ -246,10 +280,10 @@
 
           // Inject countdown card markup
           cardContainer.innerHTML = `
-      <div class="arrow up">↑ swipe up to skip</div>
-      <div class="countdown-text">Place on Forehead!</div>
-      <div class="arrow down">↓ swipe down for correct</div>
-    `;
+        <div class="arrow up">↑ swipe up to skip</div>
+        <div class="countdown-text">Place on Forehead!</div>
+        <div class="arrow down">↓ swipe down for correct</div>
+      `;
 
           // Play beep immediately and then every second, three times
           beepAudio.currentTime = 0;
@@ -278,6 +312,16 @@
         toggle(appHeader, false);
         toggle(deckList, false);
         toggle(deckModal, false);
+
+        if (ctrlScheme === "tilt") {
+          tiltDetector.addEventListener("tiltdown", (e) => {
+            cardMarkedCorrect();
+          });
+          tiltDetector.addEventListener("tiltup", (e) => {
+            cardMarkedSkipped();
+          });
+        }
+
         score = 0;
         currentCards = [...selectedDeck.cards].sort(() => Math.random() - 0.5);
         currentIndex = 0;
@@ -289,7 +333,7 @@
         timerId = setInterval(() => {
           timeLeft--;
           // only beep during the final 10 seconds
-          if (useSound && timeLeft > 0 && timeLeft <= 10) {
+          if (useSound && timeLeft > 0 && timeLeft <= 5) {
             beepAudio.currentTime = 0;
             beepAudio.play();
           }
@@ -332,6 +376,15 @@
 
       // -- End the round
       function endRound() {
+        tiltDetector.stop();
+        // remove tiltDetector event listeners
+        tiltDetector.removeEventListener("tiltdown", (e) => {
+          cardMarkedCorrect();
+        });
+        tiltDetector.removeEventListener("tiltup", (e) => {
+          cardMarkedSkipped();
+        });
+
         clearInterval(timerId);
 
         if (useSound) (roundendAudio.currentTime = 0), roundendAudio.play();
@@ -346,6 +399,13 @@
         toggle(scoreModal, true);
       }
 
+      function startRoundWithCountdown() {
+        toggle(scoreModal, false);
+        tiltDetector.start().then(() => {
+          showCountdown().then(startRound);
+        });
+      }
+
       // -- Event bindings
       helpBtn.addEventListener("click", () => toggle(helpModal, true));
       settingsBtn.addEventListener("click", () => toggle(settingsModal, true));
@@ -356,16 +416,22 @@
           e.target.classList.add("active");
         })
       );
+      ctrlSchemeButtons.forEach((b) =>
+        b.addEventListener("click", (e) => {
+          ctrlScheme = e.target.dataset.scheme;
+          ctrlSchemeButtons.forEach((x) => x.classList.remove("active"));
+          e.target.classList.add("active");
+        })
+      );
       settingsCheckbox.addEventListener(
         "change",
         (e) => (useSound = e.target.checked)
       );
       playBtn.addEventListener("click", () => {
-        showCountdown().then(startRound);
+        startRoundWithCountdown();
       });
       replayBtn.addEventListener("click", () => {
-        toggle(scoreModal, false);
-        showCountdown().then(startRound);
+        startRoundWithCountdown();
       });
 
       // initial render
