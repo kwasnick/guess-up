@@ -18,6 +18,65 @@
     <!-- DECK SELECTION GRID -->
     <main id="deck-list" class="deck-grid"></main>
 
+    <!-- NEW DECK MODAL -->
+    <div id="new-deck-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Create New Deck</h2>
+          <button id="new-deck-help-btn" class="icon-btn help-btn" title="Help">
+            ?
+          </button>
+        </div>
+        <div class="setting-group">
+          <label for="new-deck-title">Title (unique):</label>
+          <input id="new-deck-title" type="text" />
+        </div>
+        <div class="setting-group">
+          <label for="new-deck-desc">Description (optional):</label>
+          <textarea id="new-deck-desc" rows="2"></textarea>
+        </div>
+        <div class="setting-group">
+          <button id="copy-prompt-btn" class="primary-btn" disabled>
+            Copy Prompt
+          </button>
+          <button id="paste-cards-btn" class="primary-btn" disabled>
+            Paste Cards
+          </button>
+        </div>
+        <div id="paste-info" class="setting-group" style="display: none">
+          <p id="cards-count"></p>
+          <p>Sample:</p>
+          <ul id="cards-sample"></ul>
+          <button id="confirm-deck-btn" class="primary-btn">Create Deck</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW DECK HELP MODAL -->
+    <div id="new-deck-help-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>New Deck Help</h2>
+        <ul>
+          <li>
+            First, enter a title (and optional description) for your new deck.
+          </li>
+          <li>
+            Click "Copy Prompt" to copy a prompt for ChatGPT to your clipboard.
+          </li>
+          <li>Paste the prompt directly into a new ChatGPT conversation.</li>
+          <li>That ChatGPT response will be the cards for your new deck.</li>
+          <li>
+            Copy the full response from ChatGPT (there should be a little 'copy'
+            icon).
+          </li>
+          <li>
+            Click "Paste Cards" to paste the cards in, and then confirm with
+            'Create Deck'.
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- HELP MODAL -->
     <div id="help-modal" class="modal hidden">
       <div class="modal-content">
@@ -64,6 +123,7 @@
         <p id="deck-description"></p>
         <br />
         <button id="play-btn" class="primary-btn">Play!</button>
+        <button id="delete-btn" class="primary-btn">Delete Deck</button>
       </div>
     </div>
 
@@ -95,12 +155,32 @@
 
     <!-- LOGIC -->
     <script type="module">
-      import { decks } from "./decks.js";
+      import { decks as builtInDecks } from "./decks.js";
+      // load custom decks
+      let customDecks = JSON.parse(localStorage.getItem("customDecks") || "[]");
+
       import { TiltDetector } from "./tilt-detector.js";
 
       // -- Element refs
-      const appHeader = document.querySelector(".app-header");
       const deckList = document.getElementById("deck-list");
+      const newDeckBtn = document.createElement("button");
+
+      // New Deck Modal
+      const newDeckModal = document.getElementById("new-deck-modal");
+      const titleInput = document.getElementById("new-deck-title");
+      const descInput = document.getElementById("new-deck-desc");
+      const copyPromptBtn = document.getElementById("copy-prompt-btn");
+      const pasteCardsBtn = document.getElementById("paste-cards-btn");
+      const pasteInfo = document.getElementById("paste-info");
+      const cardsCountEl = document.getElementById("cards-count");
+      const cardsSampleEl = document.getElementById("cards-sample");
+      const confirmDeckBtn = document.getElementById("confirm-deck-btn");
+      const deleteBtn = document.getElementById("delete-btn");
+      // Help for New Deck
+      const newDeckHelpBtn = document.getElementById("new-deck-help-btn");
+      const newDeckHelpModal = document.getElementById("new-deck-help-modal");
+
+      const appHeader = document.querySelector(".app-header");
       const helpBtn = document.getElementById("help-btn");
       const settingsBtn = document.getElementById("settings-btn");
       const helpModal = document.getElementById("help-modal");
@@ -279,24 +359,133 @@
         });
       });
 
+      newDeckHelpBtn.addEventListener("click", () =>
+        toggle(newDeckHelpModal, true)
+      );
+
       // -- Deck grid
       function renderDecks() {
-        decks.forEach((d, i) => {
+        deckList.innerHTML = "";
+        const newCard = document.createElement("button");
+        newCard.className = "deck-card";
+        newCard.textContent = "+ New Deck";
+        newCard.addEventListener("click", () => {
+          openNewDeckModal();
+        });
+        deckList.appendChild(newCard);
+
+        // Custom decks first
+        customDecks.forEach((d) => {
+          const btn = document.createElement("button");
+          btn.className = "deck-card custom-deck";
+          btn.innerHTML = `<h3>${d.title}</h3>`;
+          btn.addEventListener("click", () => openDeck(d, true));
+          deckList.appendChild(btn);
+        });
+
+        // Built-in decks
+        builtInDecks.forEach((d, i) => {
           const btn = document.createElement("button");
           btn.className = "deck-card";
           btn.innerHTML = `<h3>${d.title}</h3>`;
-          btn.addEventListener("click", () => openDeck(i));
+          btn.addEventListener("click", () => openDeck(d, false));
           deckList.appendChild(btn);
         });
       }
 
-      // -- Open deck info
-      function openDeck(i) {
-        selectedDeck = decks[i];
-        deckTitleEl.textContent = selectedDeck.title;
-        deckDescEl.textContent = selectedDeck.description;
+      // -- New Deck Stuff
+
+      // Open new deck modal
+      function openNewDeckModal() {
+        titleInput.value = "";
+        descInput.value = "";
+        copyPromptBtn.disabled = true;
+        pasteCardsBtn.disabled = true;
+        pasteInfo.style.display = "none";
+        toggle(newDeckModal, true);
+      }
+
+      // Enable buttons when title is non-empty
+      titleInput.addEventListener("input", () => {
+        const hasTitle = titleInput.value.trim() !== "";
+        copyPromptBtn.disabled = !hasTitle;
+        pasteCardsBtn.disabled = !hasTitle;
+      });
+
+      // Copy dummy prompt
+      copyPromptBtn.addEventListener("click", () => {
+        const prompt = `You are creating a deck of cards for a 'charades' or 'heads up' type
+game, where teammates will try to give clues to help the guesser guess the
+thing on the card.
+
+Your category is: "${titleInput.value}" ${descInput.value}.
+
+Your response should ONLY be a list of cards, separated by newlines, in plain
+text, with no extra formatting. No bullets, no numbers. Just line after line of
+cards. Output 100 cards.`;
+
+        navigator.clipboard.writeText(prompt);
+        alert("Copied prompt to clipboard");
+      });
+
+      // Paste cards
+      pasteCardsBtn.addEventListener("click", async () => {
+        const text = await navigator.clipboard.readText();
+        const lines = text.split(/\r?\n/).filter((l) => l.trim());
+        cardsCountEl.textContent = `Total cards: ${lines.length}`;
+        cardsSampleEl.innerHTML = lines
+          .slice(0, 3)
+          .map((c) => `<li>${c}</li>`)
+          .join("");
+        confirmDeckBtn.disabled = lines.length === 0;
+        pasteInfo.style.display = "block";
+
+        confirmDeckBtn.onclick = () => {
+          const newDeck = {
+            title: titleInput.value.trim(),
+            description: descInput.value.trim(),
+            cards: lines,
+          };
+          // ensure unique title
+          if (
+            customDecks.some((d) => d.title === newDeck.title) ||
+            builtInDecks.some((d) => d.title === newDeck.title)
+          ) {
+            alert("Title must be unique");
+            return;
+          }
+          customDecks.push(newDeck);
+          localStorage.setItem("customDecks", JSON.stringify(customDecks));
+          toggle(newDeckModal, false);
+          renderDecks();
+        };
+      });
+
+      // Open deck info modal
+      let currentDeck, currentIsCustom;
+      function openDeck(deckObj, isCustom) {
+        currentDeck = deckObj;
+        currentIsCustom = isCustom;
+        deckTitleEl.textContent = deckObj.title;
+        deckDescEl.textContent = deckObj.description || "";
+        toggle(deleteBtn, isCustom);
         toggle(deckModal, true);
       }
+
+      // Delete custom deck
+      deleteBtn.addEventListener("click", () => {
+        if (!currentIsCustom) return;
+        if (confirm(`Delete deck '${currentDeck.title}'?`)) {
+          customDecks = customDecks.filter(
+            (d) => d.title !== currentDeck.title
+          );
+          localStorage.setItem("customDecks", JSON.stringify(customDecks));
+          toggle(deckModal, false);
+          renderDecks();
+        }
+      });
+
+      // -- End New Deck Stuff
 
       function showForeheadInstructions() {
         // Hide UI panels and show our countdown card
