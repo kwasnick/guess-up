@@ -129,7 +129,11 @@
       const roundendAudio = document.getElementById("roundend-audio");
       const gameStartAudio = document.getElementById("game-start-audio");
 
-      const tiltDetector = new TiltDetector({ threshold: 30, frequency: 30 });
+      const tiltDetector = new TiltDetector({
+        threshold: 30,
+        resetThreshold: 15,
+        frequency: 30,
+      });
 
       // --- Saved settings
       const savedDuration = localStorage.getItem("roundDuration");
@@ -157,8 +161,13 @@
         timerId,
         timeLeft;
 
+      let roundSeenCards = [];
+      let allCorrectCards = {};
+
       let isDragging = false;
       let dragStartY = 0;
+      let isOnCooldown = false;
+      const cardCooldownDuration = 1000; // 1 second
 
       // -- Helper functions for dragging
 
@@ -213,6 +222,15 @@
       }
 
       function cardMarkedCorrect() {
+        if (ctrlScheme === "tilt") {
+          // Tilt has a cooldown
+          if (isOnCooldown) return;
+          isOnCooldown = true;
+          setTimeout(() => {
+            isOnCooldown = false;
+          }, cardCooldownDuration);
+        }
+
         // Animate off‐screen down
         cardContainer.style.transition = "transform 0.3s ease-in";
         cardContainer.style.transform = "translateY(100vh)";
@@ -224,6 +242,15 @@
       }
 
       function cardMarkedSkipped() {
+        if (ctrlScheme === "tilt") {
+          // Tilt has a cooldown
+          if (isOnCooldown) return;
+          isOnCooldown = true;
+          setTimeout(() => {
+            isOnCooldown = false;
+          }, cardCooldownDuration);
+        }
+
         // Animate off‐screen up
         cardContainer.style.transition = "transform 0.3s ease-in";
         cardContainer.style.transform = "translateY(-100vh)";
@@ -344,18 +371,37 @@
         toggle(deckModal, false);
 
         if (ctrlScheme === "tilt") {
-          tiltDetector.addEventListener("tiltdown", (e) => {
-            cardMarkedCorrect();
-          });
-          tiltDetector.addEventListener("tiltup", (e) => {
-            cardMarkedSkipped();
-          });
+          tiltDetector.addEventListener("tiltdown", cardMarkedCorrect);
+          tiltDetector.addEventListener("tiltup", cardMarkedSkipped);
+        }
+
+        if (allCorrectCards[selectedDeck.title] === undefined) {
+          allCorrectCards[selectedDeck.title] = new Set();
         }
 
         score = 0;
-        currentCards = [...selectedDeck.cards].sort(() => Math.random() - 0.5);
+
+        // shuffle cards
+        // first we take out all cards that have already been seen and gotten correct this round
+        // filter using allSeenCards[selectedDeck.title] Set()
+
+        let alreadyCorrectCards = [...selectedDeck.cards].filter((c) =>
+          allCorrectCards[selectedDeck.title].has(c)
+        );
+        let notCorrectYetCards = [...selectedDeck.cards].filter(
+          (c) => !allCorrectCards[selectedDeck.title].has(c)
+        );
+
+        // shuffle both sets of cards
+        notCorrectYetCards.sort(() => Math.random() - 0.5);
+        alreadyCorrectCards.sort(() => Math.random() - 0.5);
+
+        // put them back together ,starting with not seen yet cards
+        currentCards = [...notCorrectYetCards, ...alreadyCorrectCards];
+
         currentIndex = 0;
         timeLeft = roundDuration;
+        roundSeenCards = [];
         updateCard();
         updateTimer();
         toggle(gameplayView, true);
@@ -374,6 +420,10 @@
 
       // -- Update the shown card
       function updateCard() {
+        // mark card as seen and not correct
+        roundSeenCards.push([currentCards[currentIndex], false]);
+
+        // update card text
         cardText.textContent = currentCards[currentIndex];
       }
 
@@ -388,6 +438,10 @@
       function markCorrect() {
         if (useSound) (correctAudio.currentTime = 0), correctAudio.play();
         score++;
+        // mark card (last card seen of round) as correct
+        roundSeenCards[roundSeenCards.length - 1][1] = true;
+        // add to 'all correct cards' so it doesn't come up again
+        allCorrectCards[selectedDeck.title].add(currentCards[currentIndex]);
         nextCard();
       }
       function markSkip() {
@@ -408,21 +462,17 @@
       function endRound() {
         tiltDetector.stop();
         // remove tiltDetector event listeners
-        tiltDetector.removeEventListener("tiltdown", (e) => {
-          cardMarkedCorrect();
-        });
-        tiltDetector.removeEventListener("tiltup", (e) => {
-          cardMarkedSkipped();
-        });
+        tiltDetector.removeEventListener("tiltdown", cardMarkedCorrect);
+        tiltDetector.removeEventListener("tiltup", cardMarkedSkipped);
 
         clearInterval(timerId);
 
         if (useSound) (roundendAudio.currentTime = 0), roundendAudio.play();
         toggle(gameplayView, false);
+
         scoreTitle.textContent = `${selectedDeck.title} – Score: ${score}`;
-        const seenCards = currentCards.slice(0, currentIndex);
-        resultsList.innerHTML = seenCards
-          .map((c, i) => `<li>${c} ${i < score ? "✅" : "❌"}</li>`)
+        resultsList.innerHTML = roundSeenCards
+          .map((c) => `<li>${c[0]} ${c[1] ? "✅" : "❌"}</li>`)
           .join("");
         toggle(appHeader, true);
         toggle(deckList, true);
@@ -452,7 +502,7 @@
         });
       }
 
-      // -- Event bindings
+      // -- Event bindings for buttons
       helpBtn.addEventListener("click", () => toggle(helpModal, true));
       settingsBtn.addEventListener("click", () => toggle(settingsModal, true));
       durationButtons.forEach((b) =>
