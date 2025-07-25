@@ -69,7 +69,11 @@
 
     <!-- GAMEPLAY VIEW -->
     <div id="gameplay-view" class="hidden">
-      <div id="card-container" class="card-container"></div>
+      <div id="card-container" class="card-container">
+        <div class="swipe-label swipe-up">↑ swipe up to skip</div>
+        <div class="card-text"></div>
+        <div class="swipe-label swipe-down">↓ swipe down for correct</div>
+      </div>
       <div id="timer" class="timer">0:00</div>
     </div>
 
@@ -110,6 +114,9 @@
       const ctrlSchemeButtons = document.querySelectorAll(".ctrl-scheme-btn");
       const gameplayView = document.getElementById("gameplay-view");
       const cardContainer = document.getElementById("card-container");
+      const cardText = document.querySelector(".card-text");
+      const swipeUpText = document.querySelector(".swipe-up");
+      const swipeDownText = document.querySelector(".swipe-down");
       const timerEl = document.getElementById("timer");
       const scoreModal = document.getElementById("score-modal");
       const scoreTitle = document.getElementById("score-title");
@@ -272,17 +279,11 @@
 
         // Disable dragging on the card
         cardContainer.style.pointerEvents = "none";
-        cardContainer.classList.add("countdown-card");
 
         // hide timer
         toggle(timerEl, false);
 
-        // Inject countdown card markup
-        cardContainer.innerHTML = `
-        <div class="arrow up">↑ swipe up to skip</div>
-        <div class="countdown-text">Place on Forehead!</div>
-        <div class="arrow down">↓ swipe down for correct</div>
-      `;
+        cardText.textContent = "Place on Forehead!";
       }
 
       // --- Countdown before game start ---
@@ -300,17 +301,11 @@
 
           // Disable dragging on the card
           cardContainer.style.pointerEvents = "none";
-          cardContainer.classList.add("countdown-card");
 
           // hide timer
           toggle(timerEl, false);
 
-          // Inject countdown card markup
-          cardContainer.innerHTML = `
-        <div class="arrow up">↑ swipe up to skip</div>
-        <div class="countdown-text">Place on Forehead!</div>
-        <div class="arrow down">↓ swipe down for correct</div>
-      `;
+          cardText.textContent = "Get Ready!";
 
           // Play beep immediately and then every second, three times
           beepAudio.currentTime = 0;
@@ -325,7 +320,6 @@
               clearInterval(interval);
               // Cleanup countdown view
               toggle(timerEl, true);
-              cardContainer.classList.remove("countdown-card");
               toggle(gameplayView, false);
               cardContainer.style.pointerEvents = "auto";
               resolve();
@@ -376,7 +370,7 @@
 
       // -- Update the shown card
       function updateCard() {
-        cardContainer.textContent = currentCards[currentIndex];
+        cardText.textContent = currentCards[currentIndex];
       }
 
       // -- Update the timer display
@@ -434,9 +428,14 @@
       function startRoundWithCountdown() {
         toggle(scoreModal, false);
         if (ctrlScheme === "touch") {
+          swipeUpText.textContent = "↑ swipe up to skip";
+          swipeDownText.textContent = "↓ swipe down for correct";
           showCountdown().then(startRound);
           return;
         }
+        // tilt controls
+        swipeUpText.textContent = "↑ tilt up to skip";
+        swipeDownText.textContent = "↓ tilt down for correct";
         showForeheadInstructions();
         tiltDetector.start().then(() => {
           // wait for the first “tiltdown” (i.e. forehead placement)
@@ -464,6 +463,13 @@
           ctrlScheme = e.target.dataset.scheme;
           ctrlSchemeButtons.forEach((x) => x.classList.remove("active"));
           e.target.classList.add("active");
+
+          // *** NEW: toggle the class for showing labels ***
+          if (ctrlScheme === "touch") {
+            cardContainer.classList.add("touch-scheme");
+          } else {
+            cardContainer.classList.remove("touch-scheme");
+          }
         })
       );
       settingsCheckbox.addEventListener(
