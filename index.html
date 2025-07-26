@@ -10,9 +10,25 @@
   <body>
     <!-- HEADER -->
     <header class="app-header">
-      <button id="help-btn" class="icon-btn">?</button>
-      <h1>Guess Up!</h1>
-      <button id="settings-btn" class="icon-btn">⚙️</button>
+      <div class="left-buttons">
+        <button id="home-btn" class="icon-btn">
+          <span class="icon">🏠</span>
+          <span class="label">More Games</span>
+        </button>
+        <button id="help-btn" class="icon-btn">
+          <span class="icon">❓</span>
+          <span class="label">Help</span>
+        </button>
+      </div>
+
+      <h1 class="app-title">Guess Up!</h1>
+
+      <div class="right-buttons">
+        <button id="settings-btn" class="icon-btn">
+          <span class="icon">⚙️</span>
+          <span class="label">Settings</span>
+        </button>
+      </div>
     </header>
 
     <!-- DECK SELECTION GRID -->
@@ -83,8 +99,8 @@
         <h2>How to Play</h2>
         <p>
           Hold the phone on your forehead so the card faces your teammates.<br />
-          They give you clues. Swipe down to mark Correct;<br />
-          swipe up to Skip.
+          They give you clues. Swipe or tilt down to mark Correct;<br />
+          swipe or tilt up to Skip. (Change control scheme in settings.)
         </p>
       </div>
     </div>
@@ -182,6 +198,7 @@
 
       const appHeader = document.querySelector(".app-header");
       const helpBtn = document.getElementById("help-btn");
+      const homeBtn = document.getElementById("home-btn");
       const settingsBtn = document.getElementById("settings-btn");
       const helpModal = document.getElementById("help-modal");
       const settingsModal = document.getElementById("settings-modal");
@@ -693,6 +710,9 @@ cards. Output 100 cards.`;
       }
 
       // -- Event bindings for buttons
+      homeBtn.addEventListener("click", () =>
+        window.open("https://kwasnick.github.io/games", "_blank")
+      );
       helpBtn.addEventListener("click", () => toggle(helpModal, true));
       settingsBtn.addEventListener("click", () => toggle(settingsModal, true));
       durationButtons.forEach((b) =>

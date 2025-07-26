@@ -27,12 +27,19 @@ body {
 /* HEADER */
 .app-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  align-items: center;
+  position: relative;
+  padding: 0.5rem 0.75rem;
   background: var(--blue-800);
   border-bottom: 2px solid var(--white);
-  flex: 0 0 auto;
+}
+
+.left-buttons,
+.right-buttons {
+  display: flex;
+  gap: 4px; /* tighter spacing between buttons */
+  height: 100%;
 }
 
 .app-header h1 {
@@ -40,11 +47,29 @@ body {
 }
 
 .icon-btn {
-  background: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
   border: none;
-  color: var(--white);
-  font-size: 1.25rem;
+  border-radius: 10px;
   cursor: pointer;
+  padding: 2px;
+  text-align: center;
+  width: 60px;
+  height: 100%;
+  background: var(--blue-700);
+}
+
+.icon-btn .icon {
+  font-size: 32px;
+}
+
+.icon-btn .label {
+  font-size: 12px;
+  margin-top: 4px;
+  color: var(--white);
+  word-wrap: break-word;
+  white-space: normal;
 }
 
 /* DECK GRID */
