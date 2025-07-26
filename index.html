@@ -465,6 +465,7 @@ cards. Output 100 cards.`;
       let currentDeck, currentIsCustom;
       function openDeck(deckObj, isCustom) {
         currentDeck = deckObj;
+        selectedDeck = deckObj;
         currentIsCustom = isCustom;
         deckTitleEl.textContent = deckObj.title;
         deckDescEl.textContent = deckObj.description || "";
