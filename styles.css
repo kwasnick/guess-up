@@ -72,6 +72,49 @@ body {
   white-space: normal;
 }
 
+/* FIRST TIME MODAL STYLES */
+.first-time-content {
+  max-width: 90vw;
+  margin: 0 auto;
+  padding: 20px;
+  border-radius: 20px;
+}
+.first-time-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+.first-time-btn {
+  border: none;
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 12px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.first-time-btn .btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.first-time-btn img {
+  width: 45%;
+  height: auto;
+  border-radius: 8px;
+  object-fit: cover;
+}
+@media (min-width: 640px) {
+  .first-time-buttons {
+    flex-direction: row;
+  }
+  .first-time-btn img {
+    width: auto;
+    height: 100px;
+  }
+}
+
 /* DECK GRID */
 .deck-grid {
   flex: 1;

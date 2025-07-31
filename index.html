@@ -31,6 +31,36 @@
       </div>
     </header>
 
+    <!-- FIRST TIME CONTROL SCHEME SELECTION MODAL -->
+    <div id="first-time-modal" class="modal hidden">
+      <div class="modal-content first-time-content">
+        <h2>Welcome to Guess Up!</h2>
+        <p>
+          Choose your control scheme.
+          <br />
+          You can change this in Settings ⚙️ at any time.
+        </p>
+        <div class="first-time-buttons">
+          <button id="scheme-tilt-btn" class="first-time-btn">
+            <div class="btn-content">
+              <div class="btn-text">
+                The guesser will hold the phone (tilt controls)
+              </div>
+              <img src="images/tilt.png" alt="Tilt Controls" />
+            </div>
+          </button>
+          <button id="scheme-touch-btn" class="first-time-btn">
+            <div class="btn-content">
+              <div class="btn-text">
+                The clue-givers will hold the phone (touch controls)
+              </div>
+              <img src="images/touch.png" alt="Touch Controls" />
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- DECK SELECTION GRID -->
     <main id="deck-list" class="deck-grid"></main>
 
@@ -181,6 +211,8 @@
       const deckList = document.getElementById("deck-list");
       const newDeckBtn = document.createElement("button");
 
+      // First time modal
+      const firstTimeModal = document.getElementById("first-time-modal");
       // New Deck Modal
       const newDeckModal = document.getElementById("new-deck-modal");
       const titleInput = document.getElementById("new-deck-title");
@@ -231,6 +263,41 @@
         resetThreshold: 15,
         frequency: 30,
       });
+
+      // --- FIRST-TIME MODAL LOGIC ---
+
+      const hasSeenControlScheme = "hasSeenControlSchemeModal__v1";
+      // Show on first load only
+      if (!localStorage.getItem(hasSeenControlScheme)) {
+        firstTimeModal.classList.remove("hidden");
+      }
+      // Handler to select scheme
+      function onSelectScheme(scheme) {
+        // Update control scheme and save
+        ctrlScheme = scheme;
+        localStorage.setItem("ctrlScheme", scheme);
+        // Never show again
+        localStorage.setItem(hasSeenControlScheme, "true");
+        // Hide modal
+        firstTimeModal.classList.add("hidden");
+        // Update settings UI state
+        ctrlSchemeButtons.forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.scheme === scheme);
+        });
+        // Toggle touch class if needed
+        if (scheme === "touch") {
+          cardContainer.classList.add("touch-scheme");
+        } else {
+          cardContainer.classList.remove("touch-scheme");
+        }
+      }
+      // Wire up selection buttons
+      document
+        .getElementById("scheme-tilt-btn")
+        .addEventListener("click", () => onSelectScheme("tilt"));
+      document
+        .getElementById("scheme-touch-btn")
+        .addEventListener("click", () => onSelectScheme("touch"));
 
       // --- Saved settings
       const savedDuration = localStorage.getItem("roundDuration");
@@ -432,14 +499,14 @@
       // Copy dummy prompt
       copyPromptBtn.addEventListener("click", () => {
         const prompt = `You are creating a deck of cards for a 'charades' or 'heads up' type
-game, where teammates will try to give clues to help the guesser guess the
-thing on the card.
+      game, where teammates will try to give clues to help the guesser guess the
+      thing on the card.
 
-Your category is: "${titleInput.value}" ${descInput.value}.
+      Your category is: "${titleInput.value}" ${descInput.value}.
 
-Your response should ONLY be a list of cards, separated by newlines, in plain
-text, with no extra formatting. No bullets, no numbers. Just line after line of
-cards. Output 100 cards.`;
+      Your response should ONLY be a list of cards, separated by newlines, in plain
+      text, with no extra formatting. No bullets, no numbers. Just line after line of
+      cards. Output 100 cards.`;
 
         navigator.clipboard.writeText(prompt);
         alert("Copied prompt to clipboard");
